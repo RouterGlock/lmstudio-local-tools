@@ -1,22 +1,26 @@
+![LM Studio Local Tools](assets/banner.svg)
+
 # lmstudio-local-tools
 
-A small local-AI fallback stack for [LM Studio](https://lmstudio.ai): terminal
-and browser control via MCP, a stdlib-only terminal chat client, and a keyless
-web search server. Useful any time you want an agentic local model that can
-run shell commands, drive your browser, and search the web — no cloud API,
-no API keys.
+[![GitHub repo](https://img.shields.io/badge/GitHub-lmstudio--local--tools-blue?logo=github)](https://github.com/RouterGlock/lmstudio-local-tools)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+A local-AI fallback stack for [LM Studio](https://lmstudio.ai): terminal and
+browser control via MCP, a stdlib-only terminal chat client, and a keyless web
+search server. Point any tool-calling-capable local model at your shell, your
+real Chrome, and the open web — no cloud API, no API keys, nothing leaves
+your machine.
+
+![How it fits together: qwen-chat.py talks to LM Studio's local server, which fans out to the terminal, browser, and websearch MCP tools](assets/architecture.svg)
 
 ## What's included
 
-- **`qwen-chat.py`** — stdlib-only Python REPL that talks to LM Studio's local
-  server API (`http://localhost:1234/api/v1/chat`), including MCP tool calls.
-  Works with any tool-calling-capable model loaded in LM Studio.
-- **`rg_websearch_mcp.py`** — a keyless MCP server exposing one tool,
-  `web_search(query, max_results=5)`, backed by Bing's HTML results page (no
-  API key required).
-- **`mcp.json.example`** — template MCP server config for `~/.lmstudio/mcp.json`.
-- **`scripts/ensure-lmstudio-server.sh`** + **`launchagents/com.lmstudio.server-autostart.plist`**
-  — optional LaunchAgent to keep the LM Studio local server running.
+| | |
+|---|---|
+| **`qwen-chat.py`** | stdlib-only Python REPL that talks to LM Studio's local server API, including MCP tool calls. Works with any tool-calling-capable model. |
+| **`rg_websearch_mcp.py`** | keyless MCP server exposing `web_search(query, max_results=5)`, backed by Bing's HTML results page — no API key required. |
+| **`mcp.json.example`** | template MCP server config for `~/.lmstudio/mcp.json`. |
+| **`scripts/` + `launchagents/`** | optional LaunchAgent to keep the LM Studio local server running in the background. |
 
 MCP servers used:
 - **terminal** → [`@wonderwhy-er/desktop-commander`](https://www.npmjs.com/package/@wonderwhy-er/desktop-commander) — shell command execution, file read/write/edit/search.
@@ -61,6 +65,18 @@ python3 qwen-chat.py --no-terminal      # browser tool only
 python3 qwen-chat.py --model "<model-id>"
 python3 qwen-chat.py --show-reasoning   # show the model's reasoning blocks
 python3 qwen-chat.py -p "list files in ~/Desktop"   # one-shot, non-interactive
+```
+
+```
+$ python3 qwen-chat.py
+model: qwen/qwen3.8-27b
+tools: ['mcp/terminal', 'mcp/browser']
+type 'exit' or Ctrl-D to quit
+
+> list the files on my Desktop
+[tool] terminal.list_directory({"path": "~/Desktop"})
+  -> Portfolio, Screenshots, notes.txt, ...
+Your Desktop has a Portfolio folder, a Screenshots folder, and a notes.txt file.
 ```
 
 The client keeps the conversation stateful across turns, prints each tool
@@ -118,4 +134,4 @@ browser and adjust the regexes accordingly.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT © 2026 RouterGlock — see [LICENSE](LICENSE).
