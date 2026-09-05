@@ -1,0 +1,135 @@
+#!/usr/bin/env python3
+"""
+Terminal chat REPL for a local LM Studio model with the terminal/browser
+MCP tools (from ~/.lmstudio/mcp.json) enabled — the offline fallback for
+when hosted Claude/Claude Code is unavailable.
+
+No third-party packages required (stdlib only), so it keeps working even
+if pip/npm registries are unreachable.
+
+Usage:
+    ./qwen-chat.py                       # both terminal + browser tools
+    ./qwen-chat.py --no-browser          # terminal tool only
+    ./qwen-chat.py --no-terminal         # browser tool only
+    ./qwen-chat.py --show-reasoning      # print the model's reasoning blocks
+    ./qwen-chat.py --model <id>          # override the model identifier
+"""
+import argparse
+import json
+import sys
+import urllib.error
+import urllib.request
+
+DEFAULT_MODEL = "qwen/qwen3.8-27b"
+API_URL = "http://localhost:1234/api/v1/chat"
+
+
+def post_chat(model, user_input, integrations, previous_response_id, show_reasoning):
+    body = {
+        "model": model,
+        "input": user_input,
+        "integrations": integrations,
+        "context_length": 16000,
+    }
+    if previous_response_id:
+        body["previous_response_id"] = previous_response_id
+
+    req = urllib.request.Request(
+        API_URL,
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=600) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        try:
+            err = json.loads(e.read().decode("utf-8"))
+            msg = err.get("error", {}).get("message", str(err))
+        except Exception:
+            msg = e.read().decode("utf-8", "replace")
+        print(f"\n[error] {msg}", file=sys.stderr)
+        if "Permission denied" in msg:
+            print(
+                "[hint] In LM Studio, open Developer > Local Server settings and "
+                "enable 'Allow calling servers from mcp.json'.",
+                file=sys.stderr,
+            )
+        return None
+    except urllib.error.URLError as e:
+        print(f"\n[error] Could not reach LM Studio server at {API_URL}: {e}", file=sys.stderr)
+        print("[hint] Is LM Studio open with the local server running (lms server start)?", file=sys.stderr)
+        return None
+
+
+def render_output(output, show_reasoning):
+    for item in output:
+        t = item.get("type")
+        if t == "reasoning" and show_reasoning:
+            content = item.get("content", "").strip()
+            if content:
+                print(f"\033[2m[reasoning] {content}\033[0m")
+        elif t == "tool_call":
+            tool = item.get("tool", "?")
+            args = item.get("arguments", {})
+            out = str(item.get("output", ""))
+            if len(out) > 300:
+                out = out[:300] + "…"
+            print(f"\033[36m[tool] {tool}({json.dumps(args)})\033[0m")
+            if out:
+                print(f"\033[2m  -> {out}\033[0m")
+        elif t == "message":
+            content = item.get("content", "")
+            if content:
+                print(content)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--model", default=DEFAULT_MODEL, help="Model identifier (default: %(default)s)")
+    parser.add_argument("--no-browser", action="store_true", help="Disable the browser MCP tool")
+    parser.add_argument("--no-terminal", action="store_true", help="Disable the terminal MCP tool")
+    parser.add_argument("--show-reasoning", action="store_true", help="Print model reasoning blocks")
+    parser.add_argument("--prompt", "-p", help="Send a single prompt and exit (non-interactive)")
+    args = parser.parse_args()
+
+    integrations = []
+    if not args.no_terminal:
+        integrations.append("mcp/terminal")
+    if not args.no_browser:
+        integrations.append("mcp/browser")
+
+    print(f"model: {args.model}")
+    print(f"tools: {integrations or '(none)'}")
+    print("type 'exit' or Ctrl-D to quit\n")
+
+    previous_response_id = None
+
+    def turn(user_input):
+        nonlocal previous_response_id
+        result = post_chat(args.model, user_input, integrations, previous_response_id, args.show_reasoning)
+        if result is None:
+            return
+        render_output(result.get("output", []), args.show_reasoning)
+        previous_response_id = result.get("response_id", previous_response_id)
+
+    if args.prompt:
+        turn(args.prompt)
+        return
+
+    while True:
+        try:
+            user_input = input("\n> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+        if not user_input:
+            continue
+        if user_input.lower() in ("exit", "quit"):
+            break
+        turn(user_input)
+
+
+if __name__ == "__main__":
+    main()

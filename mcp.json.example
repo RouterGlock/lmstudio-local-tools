@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "terminal": {
+      "command": "npx",
+      "args": ["-y", "@wonderwhy-er/desktop-commander@latest"]
+    },
+    "browser": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest", "--extension"],
+      "env": {
+        "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "<paste the token the Playwright Extension shows on install>"
+      }
+    },
+    "websearch": {
+      "command": "uv",
+      "args": ["run", "--with", "mcp", "python3", "/absolute/path/to/rg_websearch_mcp.py"]
+    }
+  }
+}
