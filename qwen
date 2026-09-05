@@ -4,15 +4,19 @@ Terminal chat REPL for a local LM Studio model with the terminal/browser
 MCP tools (from ~/.lmstudio/mcp.json) enabled — the offline fallback for
 when hosted Claude/Claude Code is unavailable.
 
+Streams the response live (SSE), including the model's reasoning/thinking
+as it's generated, similar to Claude Code's transcript.
+
 No third-party packages required (stdlib only), so it keeps working even
 if pip/npm registries are unreachable.
 
 Usage:
-    ./qwen                       # both terminal + browser tools
-    ./qwen --no-browser          # terminal tool only
-    ./qwen --no-terminal         # browser tool only
-    ./qwen --show-reasoning      # print the model's reasoning blocks
-    ./qwen --model <id>          # override the model identifier
+    qwen                          # both terminal + browser tools
+    qwen --no-browser             # terminal tool only
+    qwen --no-terminal            # browser tool only
+    qwen --hide-reasoning         # don't print the model's thinking
+    qwen --model <id>             # override the model identifier
+    qwen -p "prompt"              # send a single prompt and exit
 """
 import argparse
 import json
@@ -24,18 +28,23 @@ import urllib.request
 DEFAULT_MODEL = "qwen/qwen3.8-27b"
 API_URL = "http://localhost:1234/api/v1/chat"
 
+DIM = "\033[2m"
+CYAN = "\033[36m"
+RESET = "\033[0m"
 
-def post_chat(model, user_input, integrations, previous_response_id, show_reasoning):
+
+def stream_chat(model, user_input, integrations, previous_response_id, show_reasoning):
     body = {
         "model": model,
         "input": user_input,
         "integrations": integrations,
         "context_length": 16000,
+        "stream": True,
     }
     if previous_response_id:
         body["previous_response_id"] = previous_response_id
 
-    headers = {"Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json", "Accept": "text/event-stream"}
     token = os.environ.get("LM_API_TOKEN")
     if token:
         headers["Authorization"] = f"Bearer {token}"
@@ -46,9 +55,13 @@ def post_chat(model, user_input, integrations, previous_response_id, show_reason
         headers=headers,
         method="POST",
     )
+
+    in_reasoning = False
+    in_message = False
+    response_id = previous_response_id
+
     try:
-        with urllib.request.urlopen(req, timeout=600) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+        resp = urllib.request.urlopen(req, timeout=600)
     except urllib.error.HTTPError as e:
         try:
             err = json.loads(e.read().decode("utf-8"))
@@ -62,33 +75,76 @@ def post_chat(model, user_input, integrations, previous_response_id, show_reason
                 "enable 'Allow calling servers from mcp.json'.",
                 file=sys.stderr,
             )
-        return None
+        return previous_response_id
     except urllib.error.URLError as e:
         print(f"\n[error] Could not reach LM Studio server at {API_URL}: {e}", file=sys.stderr)
         print("[hint] Is LM Studio open with the local server running (lms server start)?", file=sys.stderr)
-        return None
+        return previous_response_id
 
+    printed_loading_hint = False
 
-def render_output(output, show_reasoning):
-    for item in output:
-        t = item.get("type")
-        if t == "reasoning" and show_reasoning:
-            content = item.get("content", "").strip()
-            if content:
-                print(f"\033[2m[reasoning] {content}\033[0m")
-        elif t == "tool_call":
-            tool = item.get("tool", "?")
-            args = item.get("arguments", {})
-            out = str(item.get("output", ""))
-            if len(out) > 300:
-                out = out[:300] + "…"
-            print(f"\033[36m[tool] {tool}({json.dumps(args)})\033[0m")
-            if out:
-                print(f"\033[2m  -> {out}\033[0m")
-        elif t == "message":
-            content = item.get("content", "")
-            if content:
-                print(content)
+    with resp:
+        for raw_line in resp:
+            line = raw_line.decode("utf-8", "replace").rstrip("\n")
+            if not line.startswith("data:"):
+                continue
+            payload = line[len("data:"):].strip()
+            if not payload:
+                continue
+            try:
+                event = json.loads(payload)
+            except json.JSONDecodeError:
+                continue
+
+            etype = event.get("type", "")
+
+            if etype == "prompt_processing.start" and not printed_loading_hint:
+                print(f"{DIM}[loading model…]{RESET}", end="\r", file=sys.stderr)
+                printed_loading_hint = True
+            elif etype == "prompt_processing.end" and printed_loading_hint:
+                print(" " * 30, end="\r", file=sys.stderr)
+
+            elif etype == "reasoning.start":
+                if show_reasoning:
+                    print(f"{DIM}[thinking] ", end="", flush=True)
+                in_reasoning = True
+            elif etype == "reasoning.delta":
+                if show_reasoning:
+                    print(event.get("content", ""), end="", flush=True)
+            elif etype == "reasoning.end":
+                if show_reasoning and in_reasoning:
+                    print(RESET)
+                in_reasoning = False
+
+            elif etype == "message.start":
+                in_message = True
+            elif etype == "message.delta":
+                print(event.get("content", ""), end="", flush=True)
+            elif etype == "message.end":
+                if in_message:
+                    print()
+                in_message = False
+
+            elif etype in ("tool_call.start", "tool_call"):
+                tool_name = event.get("tool", "?")
+                args = event.get("arguments", {})
+                print(f"{CYAN}[tool] {tool_name}({json.dumps(args)}){RESET}")
+            elif etype == "tool_call.end":
+                out = str(event.get("output", ""))
+                if len(out) > 300:
+                    out = out[:300] + "…"
+                if out:
+                    print(f"{DIM}  -> {out}{RESET}")
+
+            elif etype == "chat.end":
+                result = event.get("result", {})
+                response_id = result.get("response_id", response_id)
+
+            elif etype == "error":
+                msg = event.get("message") or event.get("error", "unknown error")
+                print(f"\n[error] {msg}", file=sys.stderr)
+
+    return response_id
 
 
 def main():
@@ -96,7 +152,7 @@ def main():
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Model identifier (default: %(default)s)")
     parser.add_argument("--no-browser", action="store_true", help="Disable the browser MCP tool")
     parser.add_argument("--no-terminal", action="store_true", help="Disable the terminal MCP tool")
-    parser.add_argument("--show-reasoning", action="store_true", help="Print model reasoning blocks")
+    parser.add_argument("--hide-reasoning", action="store_true", help="Don't print the model's reasoning/thinking")
     parser.add_argument("--prompt", "-p", help="Send a single prompt and exit (non-interactive)")
     args = parser.parse_args()
 
@@ -106,6 +162,8 @@ def main():
     if not args.no_browser:
         integrations.append("mcp/browser")
 
+    show_reasoning = not args.hide_reasoning
+
     print(f"model: {args.model}")
     print(f"tools: {integrations or '(none)'}")
     print("type 'exit' or Ctrl-D to quit\n")
@@ -114,11 +172,9 @@ def main():
 
     def turn(user_input):
         nonlocal previous_response_id
-        result = post_chat(args.model, user_input, integrations, previous_response_id, args.show_reasoning)
-        if result is None:
-            return
-        render_output(result.get("output", []), args.show_reasoning)
-        previous_response_id = result.get("response_id", previous_response_id)
+        previous_response_id = stream_chat(
+            args.model, user_input, integrations, previous_response_id, show_reasoning
+        )
 
     if args.prompt:
         turn(args.prompt)
