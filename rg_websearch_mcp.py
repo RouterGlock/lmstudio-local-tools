@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-rg/websearch — RouterGlock's own keyless web search MCP server.
+rg/websearch — a keyless web search MCP server for LM Studio.
 
-Built to replace the third-party `delan/web-search` LM Studio plugin with a
-self-owned implementation. No API key required.
+No API key required.
 
 Backend: scrapes Bing's plain HTML search results page. DuckDuckGo's
 html.duckduckgo.com / lite.duckduckgo.com endpoints were tried first and both
