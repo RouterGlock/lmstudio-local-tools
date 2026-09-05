@@ -38,7 +38,6 @@ def stream_chat(model, user_input, integrations, previous_response_id, show_reas
         "model": model,
         "input": user_input,
         "integrations": integrations,
-        "context_length": 16000,
         "stream": True,
     }
     if previous_response_id:
