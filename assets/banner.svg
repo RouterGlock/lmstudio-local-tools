@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="1200" height="300">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2DD4CF"/>
+      <stop offset="100%" stop-color="#0B6E68"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.10"/>
+    </linearGradient>
+    <path id="spark" d="M0,-11 C1.2,-3.2 3.2,-1.2 11,0 C3.2,1.2 1.2,3.2 0,11 C-1.2,3.2 -3.2,1.2 -11,0 C-3.2,-1.2 -1.2,-3.2 0,-11 Z"/>
+  </defs>
+
+  <rect width="1200" height="300" rx="28" fill="url(#bg)"/>
+
+  <!-- icon badge -->
+  <rect x="64" y="68" width="164" height="164" rx="40" fill="url(#badge)"/>
+
+  <!-- terminal glyph -->
+  <g transform="translate(96,104)">
+    <rect x="0" y="0" width="100" height="92" rx="12" fill="#0E1F1C" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="2"/>
+    <path d="M0,12 L0,12 C0,5.4 5.4,0 12,0 L88,0 C94.6,0 100,5.4 100,12 L100,20 L0,20 Z" fill="#FFFFFF" fill-opacity="0.12"/>
+    <circle cx="12" cy="10" r="3" fill="#FF6B6B"/>
+    <circle cx="24" cy="10" r="3" fill="#FFD166"/>
+    <circle cx="36" cy="10" r="3" fill="#6BCB77"/>
+    <text x="12" y="64" font-family="'SFMono-Regular',Menlo,Consolas,monospace" font-size="34" font-weight="700" fill="#5EEAD4">&gt;_</text>
+  </g>
+
+  <!-- sparkle accents -->
+  <use href="#spark" x="238" y="80" fill="#FFE08A"/>
+  <use href="#spark" x="252" y="118" fill="#FFFFFF" opacity="0.85" transform="scale(0.6)" transform-origin="252 118"/>
+  <use href="#spark" x="70" y="218" fill="#FFE08A" transform="scale(0.7)" transform-origin="70 218"/>
+
+  <!-- wordmark -->
+  <text x="320" y="158" font-family="Helvetica,Arial,sans-serif" font-size="66" font-weight="800" fill="#FFFFFF">LM Studio Local Tools</text>
+  <text x="322" y="200" font-family="Helvetica,Arial,sans-serif" font-size="26" font-weight="500" fill="#FFFFFF" fill-opacity="0.92">Offline terminal, browser &amp; search tools for any local model</text>
+</svg>
