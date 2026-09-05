@@ -8,11 +8,11 @@ No third-party packages required (stdlib only), so it keeps working even
 if pip/npm registries are unreachable.
 
 Usage:
-    ./qwen-chat.py                       # both terminal + browser tools
-    ./qwen-chat.py --no-browser          # terminal tool only
-    ./qwen-chat.py --no-terminal         # browser tool only
-    ./qwen-chat.py --show-reasoning      # print the model's reasoning blocks
-    ./qwen-chat.py --model <id>          # override the model identifier
+    ./qwen                       # both terminal + browser tools
+    ./qwen --no-browser          # terminal tool only
+    ./qwen --no-terminal         # browser tool only
+    ./qwen --show-reasoning      # print the model's reasoning blocks
+    ./qwen --model <id>          # override the model identifier
 """
 import argparse
 import json

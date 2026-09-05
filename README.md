@@ -11,13 +11,13 @@ search server. Point any tool-calling-capable local model at your shell, your
 real Chrome, and the open web — no cloud API, no API keys, nothing leaves
 your machine.
 
-![How it fits together: qwen-chat.py talks to LM Studio's local server, which fans out to the terminal, browser, and websearch MCP tools](assets/architecture.svg)
+![How it fits together: qwen talks to LM Studio's local server, which fans out to the terminal, browser, and websearch MCP tools](assets/architecture.svg)
 
 ## What's included
 
 | | |
 |---|---|
-| **`qwen-chat.py`** | stdlib-only Python REPL that talks to LM Studio's local server API, including MCP tool calls. Works with any tool-calling-capable model. |
+| **`qwen`** | stdlib-only Python REPL that talks to LM Studio's local server API, including MCP tool calls. Works with any tool-calling-capable model. |
 | **`rg_websearch_mcp.py`** | keyless MCP server exposing `web_search(query, max_results=5)`, backed by Bing's HTML results page — no API key required. |
 | **`mcp.json.example`** | template MCP server config for `~/.lmstudio/mcp.json`. |
 | **`scripts/` + `launchagents/`** | optional LaunchAgent to keep the LM Studio local server running in the background. |
@@ -59,16 +59,16 @@ Both run via `npx`, no persistent install required.
 ```
 cd lmstudio-local-tools
 export LM_API_TOKEN="<your token>"
-python3 qwen-chat.py                    # interactive REPL, both tools on
-python3 qwen-chat.py --no-browser       # terminal tool only
-python3 qwen-chat.py --no-terminal      # browser tool only
-python3 qwen-chat.py --model "<model-id>"
-python3 qwen-chat.py --show-reasoning   # show the model's reasoning blocks
-python3 qwen-chat.py -p "list files in ~/Desktop"   # one-shot, non-interactive
+./qwen                          # interactive REPL, both tools on
+./qwen --no-browser              # terminal tool only
+./qwen --no-terminal              # browser tool only
+./qwen --model "<model-id>"
+./qwen --show-reasoning           # show the model's reasoning blocks
+./qwen -p "list files in ~/Desktop"   # one-shot, non-interactive
 ```
 
 ```
-$ python3 qwen-chat.py
+$ ./qwen
 model: qwen/qwen3.8-27b
 tools: ['mcp/terminal', 'mcp/browser']
 type 'exit' or Ctrl-D to quit
@@ -82,6 +82,12 @@ Your Desktop has a Portfolio folder, a Screenshots folder, and a notes.txt file.
 The client keeps the conversation stateful across turns, prints each tool
 call it makes with a truncated output preview, then the model's final reply.
 Type `exit` or Ctrl-D to quit.
+
+**Want to just type `qwen` from anywhere?**
+```
+ln -s "$(pwd)/qwen" ~/.local/bin/qwen   # make sure ~/.local/bin is on your PATH
+```
+Then `qwen` works as a plain command in any terminal, no `cd` or `python3` needed.
 
 Test the web search server standalone:
 ```
@@ -117,7 +123,7 @@ This runs `lms server start` at login and every 5 minutes thereafter.
   understand.
 - **browser** with `--extension` can act in your real, logged-in browser.
   Don't approve actions on sensitive tabs you haven't reviewed.
-- `qwen-chat.py` has no per-tool-call confirmation of its own — the API
+- `qwen` has no per-tool-call confirmation of its own — the API
   executes tool calls immediately once the server setting above is on.
 - Local models are more likely than a frontier hosted model to misread
   instructions or run a destructive command by mistake. Review before
