@@ -62,19 +62,32 @@ the same way the GUI chat does, including MCP tool calls. It's stdlib-only
 Python (no pip installs needed), so it still works if package registries are
 unreachable during an outage.
 
-**One-time toggle required** (security gate, on by default = off):
-In LM Studio, open the **Developer** tab → **Local Server** → **Server Settings**,
-and enable **"Allow calling servers from mcp.json"**. This is what lets the
-`/api/v1/chat` endpoint invoke your `terminal`/`browser` MCP servers at all —
-without it every tool call is rejected with "Permission denied to use plugin".
-This is a deliberate one-click gate (anything hitting that local port can now
-run shell commands / drive your browser with no per-call confirmation dialog),
-so it's left for you to enable rather than auto-toggled.
+**One-time setup required** (security gate, on by default = off) — this has
+two dependent parts, both in LM Studio's **Developer** tab → **Local Server**
+→ **Server Settings**:
+
+1. Enable **"Require Authentication"** first. This is a hard prerequisite —
+   **"Allow calling servers from mcp.json" silently does nothing without it**,
+   which is exactly the trap this setup hit: toggling only the mcp.json
+   switch, restarting the server, and still getting "Permission denied" no
+   matter what.
+2. Click **"Manage Tokens"** → **Create Token**, name it (e.g.
+   `qwen-chat-local`), and copy the value shown — it's only displayed once.
+3. Now enable **"Allow calling servers from mcp.json"** — it will actually
+   take effect this time.
+4. Export the token so the script can send it:
+   `export LM_API_TOKEN="<paste token>"` (add to `~/.zshrc` to persist it
+   across terminal sessions).
+
+Once authentication is required, every request — including `qwen-chat.py`'s —
+must carry `Authorization: Bearer <token>`, or it's rejected outright, tool
+calls or not.
 
 Then, from any terminal:
 
 ```
 cd ~/lmstudio-local-tools
+export LM_API_TOKEN="<your token>"      # or set it once in ~/.zshrc
 python3 qwen-chat.py                    # interactive REPL, both tools on
 python3 qwen-chat.py --no-browser       # terminal tool only
 python3 qwen-chat.py --no-terminal      # browser tool only
