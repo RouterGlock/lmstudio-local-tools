@@ -199,6 +199,56 @@ Test it standalone any time with:
 python3 rg_websearch_mcp.py --self-test "your query here"
 ```
 
+## Vision model: Qwen3-VL-30B-A3B (abliterated, Q8_0)
+
+Downloaded via:
+```
+lms get "https://huggingface.co/noctrex/Huihui-Qwen3-VL-30B-A3B-Instruct-abliterated-GGUF@Q8_0" --gguf -y
+```
+GGUF (not MLX) so it runs on LM Studio's llama.cpp backend with full Metal GPU
+offload. Vision-capable (drop images into a chat) + abliterated (uncensored,
+for testing — note research shows abliteration costs roughly ~9% general
+reasoning quality, it's not a free unlock) + true 8-bit, per explicit request.
+32.5GB on disk; comfortable alone in 64GB RAM but not alongside much else.
+
+**First attempt got the wrong quant**: passing the repo as a short name
+(`owner/repo@Q8_0`) failed to resolve at all (not in LM Studio's known
+catalog), and passing the plain HF URL without a quant suffix silently
+auto-picked LM Studio's hardware-recommended default (Q4_K_S, 4-bit) instead
+of what was asked for. The fix was appending `@Q8_0` to the full URL. Worth
+checking `du -sh` on the model folder after any non-interactive `lms get` to
+confirm you got the file you actually asked for, not a silent substitute.
+
+## A real memory lesson from tonight
+
+Two chat models (`qwen3-coder-30b` + `qwen3.8-27b`, ~33GB combined) had been
+loaded via `lms load` (manual, not through the API), which — unlike JIT-loaded
+models — **has no TTL by default and never auto-unloads**. That left only
+~8GB free, which would have made the 32.5GB vision model (or a ComfyUI
+image/video generation) impossible to run without swapping. Fixed by
+unloading both manually and going back to letting API calls JIT-load models
+on demand.
+
+**Rule going forward: don't use `lms load` for casual use.** Just hit the API
+(`qwen-chat.py`, LM Studio's own chat, etc.) and let JIT loading +
+Auto-Evict (both on by default) manage memory — only one JIT-loaded model
+stays resident at a time, and it auto-unloads after 60 minutes idle
+(configurable in Developer tab → Server Settings if you want it shorter).
+`lms load` is fine for a deliberate one-off (like the coder-model test
+earlier), just remember to `lms unload` when done, or don't use it at all.
+
+## OpenClaw (tried, then removed)
+
+Evaluated OpenClaw (github.com/openclaw/openclaw) as a more full-featured
+local terminal agent than `qwen-chat.py` — installed, configured against
+`lmstudio/qwen/qwen3-coder-30b`, set `exec-policy preset cautious` for
+command-approval gating. Fully uninstalled the same night
+(`openclaw uninstall --all`, then `npm uninstall -g openclaw`) once remote
+control of this actual Claude Code session from a phone covered the
+"terminal agent access away from my desk" need. Worth revisiting on the
+Mac Mini if a dedicated always-on local agent becomes useful again — the
+LM Studio side (models, MCP servers) is already in place for it to plug into.
+
 ## Safety notes
 
 - **terminal** gives the model the same real shell access as this Claude Code
@@ -240,5 +290,8 @@ the real, live copies (with the actual Playwright pairing token) and are
   `~/Library/LaunchAgents/com.lmstudio.server-autostart.plist` — server
   auto-start (copies live in this repo under `scripts/` and `launchagents/`).
 - Installed: Visual Studio Code (`brew`), Cline extension
-  (`saoudrizwan.claude-dev`), `qwen/qwen3.8-27b` (general chat) and
-  `qwen/qwen3-coder-30b` (coding) models.
+  (`saoudrizwan.claude-dev`), `qwen/qwen3.8-27b` (general chat),
+  `qwen/qwen3-coder-30b` (coding), and the Qwen3-VL-30B-A3B abliterated Q8_0
+  GGUF (vision) models.
+- OpenClaw: installed, configured, then fully removed (`openclaw uninstall
+  --all` + `npm uninstall -g openclaw`) — see the OpenClaw section above.
