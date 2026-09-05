@@ -16,6 +16,7 @@ Usage:
 """
 import argparse
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -34,10 +35,15 @@ def post_chat(model, user_input, integrations, previous_response_id, show_reason
     if previous_response_id:
         body["previous_response_id"] = previous_response_id
 
+    headers = {"Content-Type": "application/json"}
+    token = os.environ.get("LM_API_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
     req = urllib.request.Request(
         API_URL,
         data=json.dumps(body).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers=headers,
         method="POST",
     )
     try:
