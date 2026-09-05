@@ -143,26 +143,18 @@ python3 qwen-chat.py --model "qwen/qwen3-coder-30b"
 Keep the general Qwen3.8-27B for non-coding chat/reasoning; switch to the
 coder model specifically for app/website-building tasks.
 
-## VS Code integration (Cline)
+## VS Code integration (Cline) — tried, then removed
 
-Installed VS Code (`brew install --cask visual-studio-code`) and the Cline
-extension (`saoudrizwan.claude-dev`) — closest local equivalent to Claude
-Code's in-editor agentic loop (reads/edits files, runs terminal commands,
-shows diffs inline), rather than a plain autocomplete extension.
-
-**One-time manual config** (Cline stores this in its own UI, not a plain
-settings file, so this has to be done by hand):
-1. Open VS Code, click the Cline icon in the left sidebar.
-2. Settings (gear icon) → API Provider → **LM Studio**.
-3. Base URL: `http://127.0.0.1:1234`
-4. Model ID: `qwen/qwen3-coder-30b` (or `qwen/qwen3.8-27b` for the general model)
-5. No API key needed.
-
-Requires the same "Allow calling servers from mcp.json" server setting above
-if you want Cline's own file/terminal actions to also route through the
-`terminal`/`browser` MCP tools rather than Cline's built-in (VS Code-sandboxed)
-file/terminal tools — otherwise Cline just uses its own built-in tools, which
-is also fine and arguably simpler for in-editor work.
+Installed VS Code + the Cline extension as the closest local equivalent to
+Claude Code's in-editor agentic loop. Removed the same night
+(`brew uninstall --cask --zap visual-studio-code`, plus `brew cleanup
+--prune=all` for the download cache) — decided it wasn't worth keeping
+installed just for occasional use. `--zap` took the app, CLI symlinks,
+Cline's extension data, caches, preferences, and saved state with it; nothing
+left behind. Terminal-based access (`qwen-chat.py`, or LM Studio's own chat)
+covers the same need without a standing editor install. Revisit if in-editor
+diffs become worth the footprint again — the LM Studio side (models, MCP
+tools) is already there for it to plug into.
 
 ## Web search: rg/websearch (replaces delan/web-search)
 
@@ -289,9 +281,10 @@ the real, live copies (with the actual Playwright pairing token) and are
 - `~/.local/bin/ensure-lmstudio-server.sh` +
   `~/Library/LaunchAgents/com.lmstudio.server-autostart.plist` — server
   auto-start (copies live in this repo under `scripts/` and `launchagents/`).
-- Installed: Visual Studio Code (`brew`), Cline extension
-  (`saoudrizwan.claude-dev`), `qwen/qwen3.8-27b` (general chat),
-  `qwen/qwen3-coder-30b` (coding), and the Qwen3-VL-30B-A3B abliterated Q8_0
-  GGUF (vision) models.
+- Models: `qwen/qwen3.8-27b` (general chat), `qwen/qwen3-coder-30b` (coding),
+  and the Qwen3-VL-30B-A3B abliterated Q8_0 GGUF (vision).
 - OpenClaw: installed, configured, then fully removed (`openclaw uninstall
   --all` + `npm uninstall -g openclaw`) — see the OpenClaw section above.
+- VS Code + Cline: installed, then fully removed (`brew uninstall --cask
+  --zap visual-studio-code` + `brew cleanup --prune=all`) — see that section
+  above.
